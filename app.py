@@ -8,12 +8,12 @@ from langchain_core.messages import HumanMessage
 from langgraph.checkpoint.sqlite import SqliteSaver
 
 st.set_page_config(page_title="Groq Agent", page_icon="🚀", layout="wide")
-st.title("🦜 Saleha's Agent")
-st.caption("💾 Permanent Memory Enabled — remembers everything!")
+st.title("🦜 Groq LangChain Agent")
+st.caption("💾 Permanent Memory + Faster Model")
 
-# API Key from Secrets
+# API Key check
 if not os.environ.get("GROQ_API_KEY"):
-    st.error("GROQ_API_KEY not found. Please add it in Streamlit Cloud → Settings → Secrets.")
+    st.error("GROQ_API_KEY not found. Add it in Streamlit Cloud → Settings → Secrets.")
     st.stop()
 
 @tool
@@ -23,9 +23,10 @@ def get_weather(city: str) -> str:
 
 tools = [get_weather]
 
-llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0)
+# Changed to faster model with higher free-tier limits
+llm = ChatGroq(model="llama-3.1-8b-instant", temperature=0)
 
-# === Permanent Memory (SQLite) ===
+# Permanent Memory
 if "checkpointer" not in st.session_state:
     conn = sqlite3.connect("checkpoints.db", check_same_thread=False)
     st.session_state.checkpointer = SqliteSaver(conn)
@@ -37,11 +38,9 @@ if "agent" not in st.session_state:
         checkpointer=st.session_state.checkpointer
     )
 
-# Persistent conversation thread
 if "thread_id" not in st.session_state:
     st.session_state.thread_id = "permanent_chat_1"
 
-# Display chat history
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
@@ -49,7 +48,6 @@ for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
 
-# User input
 if prompt := st.chat_input("Ask me anything..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
@@ -67,5 +65,4 @@ if prompt := st.chat_input("Ask me anything..."):
     st.session_state.messages.append({"role": "assistant", "content": response})
 
 st.sidebar.success("✅ Permanent Memory Active")
-st.sidebar.info("Model: llama-3.3-70b-versatile")
-st.sidebar.caption("All chats saved in checkpoints.db")
+st.sidebar.info("Model: llama-3.1-8b-instant (Fast + High Limits)")
