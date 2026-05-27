@@ -1,23 +1,20 @@
 import streamlit as st
 import os
+import sqlite3
 from langchain_groq import ChatGroq
 from langgraph.prebuilt import create_react_agent
 from langchain_core.tools import tool
 from langchain_core.messages import HumanMessage
+from langgraph.checkpoint.sqlite import SqliteSaver
 
 st.set_page_config(page_title="Groq Agent", page_icon="🚀", layout="wide")
-st.title("🦜 SALEHA's Agent")
-st.caption("Chat for better experience")
+st.title("🦜 Saleha's Agent")
+st.caption("💾 Permanent Memory Enabled — remembers everything!")
 
-# Get API key from Streamlit secrets (recommended for cloud)
-if "groq_key" not in st.session_state:
-    st.session_state.groq_key = st.secrets.get("GROQ_API_KEY", "")
-
-if not st.session_state.groq_key:
-    st.error("GROQ_API_KEY not found. Add it in Streamlit Cloud → Settings → Secrets.")
+# API Key from Secrets
+if not os.environ.get("GROQ_API_KEY"):
+    st.error("GROQ_API_KEY not found. Please add it in Streamlit Cloud → Settings → Secrets.")
     st.stop()
-
-os.environ["GROQ_API_KEY"] = st.session_state.groq_key
 
 @tool
 def get_weather(city: str) -> str:
@@ -28,11 +25,26 @@ tools = [get_weather]
 
 llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0)
 
-# Simple memory using Streamlit session_state (works perfectly on cloud)
+# === Permanent Memory (SQLite) ===
+if "checkpointer" not in st.session_state:
+    conn = sqlite3.connect("checkpoints.db", check_same_thread=False)
+    st.session_state.checkpointer = SqliteSaver(conn)
+
+if "agent" not in st.session_state:
+    st.session_state.agent = create_react_agent(
+        llm, 
+        tools, 
+        checkpointer=st.session_state.checkpointer
+    )
+
+# Persistent conversation thread
+if "thread_id" not in st.session_state:
+    st.session_state.thread_id = "permanent_chat_1"
+
+# Display chat history
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# Display chat
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
@@ -45,12 +57,15 @@ if prompt := st.chat_input("Ask me anything..."):
 
     with st.chat_message("assistant"):
         with st.spinner("Thinking..."):
-            agent = create_react_agent(llm, tools)
-            result = agent.invoke({"messages": [HumanMessage(content=prompt)]})
+            result = st.session_state.agent.invoke(
+                {"messages": [HumanMessage(content=prompt)]},
+                config={"configurable": {"thread_id": st.session_state.thread_id}}
+            )
             response = result["messages"][-1].content
             st.markdown(response)
     
     st.session_state.messages.append({"role": "assistant", "content": response})
 
-st.sidebar.success("✅ Agent is live!")
+st.sidebar.success("✅ Permanent Memory Active")
 st.sidebar.info("Model: llama-3.3-70b-versatile")
+st.sidebar.caption("All chats saved in checkpoints.db")
