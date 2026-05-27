@@ -6,7 +6,7 @@ from langchain_core.tools import tool
 from langchain_core.messages import HumanMessage
 
 st.set_page_config(page_title="Groq Agent", page_icon="🚀", layout="wide")
-st.title("🦜 Groq LangChain Agent")
+st.title("🦜 SALEHA's Agent")
 st.caption("Chat with Groq + Tools")
 
 # Get API key from Streamlit secrets (recommended for cloud)
